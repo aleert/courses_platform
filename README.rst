@@ -34,8 +34,8 @@ Urls
 ====
 Quick urls description. Should be replaced with OpenAPI spec.
 
-All urls must be prefixed with you dev server url and `/api/v0.1/`.
-If you use django's `runserver` command with default setting, example url would be 127.0.0.1:8000/api/v0.1/courses/1
+All urls must be prefixed with you dev server url and **`/api/v0.1/`**.
+If you use django's `runserver` command with default setting, example url would be **127.0.0.1:8000/api/v0.1/courses/1**
 
 
 * **'/'**
