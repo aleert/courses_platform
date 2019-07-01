@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+from rest_framework.reverse import reverse_lazy
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -31,15 +33,17 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'user.apps.UserConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'courses.apps.CoursesConfig',
+    'user.apps.UserConfig',
     'rest_framework',
+    'rest_registration',
 ]
 
 MIDDLEWARE = [
@@ -123,3 +127,13 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 AUTH_USER_MODEL = 'user.MyUser'
+
+# email verification disabled for testing
+REST_REGISTRATION = {
+    'REGISTER_VERIFICATION_ENABLED': False,
+    'REGISTER_EMAIL_VERIFICATION_ENABLED': False,
+    'VERIFICATION_FROM_EMAIL': 'test_registration@example.com',
+    'RESET_PASSWORD_VERIFICATION_URL': reverse_lazy('rest_registration:reset-password'),
+
+}
+

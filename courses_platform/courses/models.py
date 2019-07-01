@@ -2,7 +2,6 @@ from typing import List
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db import models
 from django.utils.functional import cached_property
 
@@ -10,9 +9,9 @@ from .fields import OrderField
 
 
 class Subject(models.Model):
-    """Subject to tag course with it."""
+    """Subject to tag courses with it."""
     title = models.CharField(max_length=200)
-    slug = models.SlugField(max_length=200, unique=True)
+    slug = models.SlugField(max_length=200, unique=True, primary_key=True)
 
     class Meta:
         ordering = ['title']
@@ -23,17 +22,30 @@ class Subject(models.Model):
 
 class Course(models.Model):
     """Course that consist of modules."""
-    owner = models.ForeignKey(to=settings.AUTH_USER_MODEL,
-                              related_name='courses_created',
-                              on_delete=models.CASCADE)
-    subject = models.ForeignKey(Subject,
-                                related_name='courses',
-                                on_delete=models.CASCADE)
-    students = models.ManyToManyField(settings.AUTH_USER_MODEL,
-                                      related_name='courses_joined',
-                                      blank=True)
+    owner = models.ForeignKey(
+        to=settings.AUTH_USER_MODEL,
+        related_name='courses_created',
+        on_delete=models.CASCADE,
+    )
+    subject = models.ForeignKey(
+        Subject,
+        related_name='courses',
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
+    students = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='courses_joined',
+        blank=True,
+    )
+    teachers = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='courses_teaches',
+        blank=True,
+    )
     title = models.CharField(max_length=200)
-    slug = models.SlugField(max_length=200, unique=True)
+    slug = models.SlugField(max_length=200)
     overview = models.TextField()
     price = models.PositiveIntegerField(default=0, help_text='Price in USD')
     created = models.DateTimeField(auto_now_add=True)
@@ -42,10 +54,11 @@ class Course(models.Model):
 
     @cached_property
     def get_max_score(self):
-        return
+        return sum([module.get_max_score() for module in self.modules.all()])
 
     class Meta:
         ordering = ['-created']
+        unique_together = ['owner', 'title']
 
     def __str__(self):
         return self.title
@@ -53,9 +66,11 @@ class Course(models.Model):
 
 class Module(models.Model):
     """Course module."""
-    course = models.ForeignKey(Course,
-                               related_name='modules',
-                               on_delete=models.CASCADE)
+    course = models.ForeignKey(
+        Course,
+        related_name='modules',
+        on_delete=models.CASCADE,
+    )
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     order = OrderField(blank=True, for_fields=['course'])
@@ -68,64 +83,84 @@ class Module(models.Model):
 
     @cached_property
     def get_max_score(self):
-        return
+        """Maximum score one can get by completing all module assignments."""
+        raise NotImplementedError
 
-    @cached_property
     def all_items(self):
         items = []
         for item in self.items.all():
-            for item_type in Item.ITEMS_RELATED:
-                if hasattr(item, item_type):
-                    items.append(getattr(item, item_type))
+                    items.append(item)
         return items
 
 
 class Item(models.Model):
-    ITEMS_RELATED = ['text_related', 'file_related', 'image_related', 'video_related']
-    module = models.ForeignKey(to=Module,
-                               on_delete=models.CASCADE,
-                               related_name='items')
-    order = OrderField(for_fields=['module'])
+    """Item with content."""
+    CONTENTS_RELATED = [
+        'text_related',
+        'file_related',
+        'image_related',
+        'video_related',
+    ]
+    ASSIGNMENTS_RELATED = [
+        'stringassignment_related',
+        'choicesassignment_related',
+        'multiplechoicesassignment_related',
+    ]
+    module = models.ForeignKey(
+        to=Module,
+        on_delete=models.CASCADE,
+        related_name='items',
+    )
+    order = OrderField(for_fields=['module'], blank=True)
 
-    @cached_property
-    def all_items(self):
-        items = []
-        for item_type in Item.ITEMS_RELATED:
-            if hasattr(self, item_type):
-                items.extend(getattr(self, item_type).all())
-        return items
+    def all_contents(self):
+        contents = []
+        for content_type in Item.CONTENTS_RELATED:
+            if hasattr(self, content_type):
+                contents.extend(getattr(self, content_type).all())
+        for assign_type in Item.ASSIGNMENTS_RELATED:
+            if hasattr(self, assign_type):
+                contents.extend(getattr(self, assign_type).all())
+        return contents
 
 
-class ItemBase(models.Model):
+class ContentBase(models.Model):
     """Base class for different content types (video, pics etc)."""
 
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL,
-                              related_name='%(class)s_related',
-                              on_delete=models.CASCADE)
-    item_type = models.CharField(max_length=20, blank=True)
-    title = models.CharField(max_length=250)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='%(class)s_related',
+        on_delete=models.CASCADE,
+    )
+    # sets to lowercase model name at save
+    content_type = models.CharField(max_length=20, blank=True, editable=False)
+    title = models.CharField(max_length=250, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     update = models.DateTimeField(auto_now=True)
-    # order all items througout, not by item_type
     order = OrderField(for_fields=['item'], blank=True)
-    item = models.ForeignKey(to=Item,
-                             on_delete=models.CASCADE,
-                             related_name='%(class)s_related')
+    item = models.ForeignKey(
+        to=Item,
+        on_delete=models.CASCADE,
+        related_name='%(class)s_related'
+    )
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
-        self.item_type = self._meta.model_name
+        self.content_type = self._meta.model_name
         return super().save(force_insert=force_insert, force_update=force_update, using=using,
                             update_fields=update_fields)
 
     class Meta:
         abstract = True
+        indexes = [
+            models.Index(fields=['content_type', 'id']),
+                   ]
 
     def __str__(self):
         return self.title
 
 
-class Text(ItemBase):
+class Text(ContentBase):
     """Text content for modules."""
     content = models.TextField()
 
@@ -133,7 +168,7 @@ class Text(ItemBase):
         return f'Text item: {self.content}'
 
 
-class File(ItemBase):
+class File(ContentBase):
     """Files attached to modules."""
     file = models.FileField(upload_to='files')
 
@@ -141,7 +176,7 @@ class File(ItemBase):
         return f'File {self.file.name}'
 
 
-class Image(ItemBase):
+class Image(ContentBase):
     """Images in modules."""
     file = models.ImageField(upload_to='images')
 
@@ -149,7 +184,7 @@ class Image(ItemBase):
         return f'Image {self.file.name}'
 
 
-class Video(ItemBase):
+class Video(ContentBase):
     """Videos for modules stored as urls to external resources."""
     url = models.URLField()
 
@@ -157,36 +192,40 @@ class Video(ItemBase):
         return f'Video at {self.url}'
 
 
-class Assignment(models.Model):
-    TEXTS_RELATED = ['stringassignment_related', 'choicesassignment_related', 'multiplechoicesassignment_related']
-    module = models.ForeignKey(to=Module,
-                               on_delete=models.CASCADE,
-                               related_name='assignments')
-
-
-class BaseAssignment(models.Model):
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL,
-                              related_name='%(class)s_related',
-                              on_delete=models.CASCADE)
-    assignment = models.ForeignKey('Assignment',
-                                   related_name='%(class)s_related',
-                                   on_delete=models.CASCADE)
+class BaseAssignment(ContentBase):
+    owner = models.ForeignKey(
+        to=settings.AUTH_USER_MODEL,
+        related_name='%(class)s_related',
+        on_delete=models.CASCADE
+    )
+    item = models.ForeignKey(
+        to='Item',
+        related_name='%(class)s_related',
+        on_delete=models.CASCADE
+    )
     max_score = models.PositiveSmallIntegerField()
-    max_attempts = models.PositiveSmallIntegerField(default=0, help_text='Specify 0 for unlimited attempts.')
-    paid_only = models.BooleanField(default=False, help_text='True if available only to users who bought a course.')
+    max_attempts = models.PositiveSmallIntegerField(
+        default=0,
+        help_text='Specify 0 for unlimited attempts.'
+    )
+    paid_only = models.BooleanField(
+        default=False,
+        help_text='True if available only to users who bought a course.'
+    )
 
     class Meta:
-
         abstract = True
 
     def validate_submission(self, submitted_answer):
         """Validate submission and return score earned."""
-        return self.max_score
+        raise NotImplementedError
 
 
 class StringAssignment(BaseAssignment):
     """Compare string with expected one and give max_score if correct."""
+    CONTENT_TYPE = 'stringassignment'
     answer = models.CharField(max_length=200)
+    question = models.TextField()
 
     def validate_submission(self, submitted_answer):
         if submitted_answer.lower() == self.answer.lower():
@@ -196,6 +235,7 @@ class StringAssignment(BaseAssignment):
 
 class ChoicesAssignment(BaseAssignment):
     """Select one answer from a list."""
+    CONTENT_TYPE = 'choicesassignment'
     # must be split with ',_' escape sequence
     _choices = models.TextField()
     answer = models.CharField(max_length=80)
@@ -211,6 +251,7 @@ class ChoicesAssignment(BaseAssignment):
 
 
 class MultipleChoicesAssignment(BaseAssignment):
+    CONTENT_TYPE = 'multiplechoicesassignment'
     # must be split with ',_' escape sequence
     _choices = models.TextField()
     _correct_choices = models.TextField()

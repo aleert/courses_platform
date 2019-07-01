@@ -41,10 +41,25 @@ class VideoInline(admin.StackedInline):
     model = Video
 
 
+class StringAssignmentInline(admin.StackedInline):
+    model = StringAssignment
+
+
+class ChoicesAssignmentInline(admin.StackedInline):
+    model = ChoicesAssignment
+
+
+class MultipleChoicesAssignmentInline(admin.StackedInline):
+    model = MultipleChoicesAssignment
+
+
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
     fields = ['module']
-    inlines = [ImageInline, TextInline, FileInline, VideoInline]
+    inlines = [
+        ImageInline, TextInline, FileInline, VideoInline,
+        StringAssignmentInline, ChoicesAssignmentInline, MultipleChoicesAssignmentInline
+    ]
 
 
 class ItemInline(admin.StackedInline):
@@ -55,4 +70,5 @@ class ItemInline(admin.StackedInline):
 
 @admin.register(Module)
 class ModuleAdmin(admin.ModelAdmin):
-    inlines = [ItemInline, ]
+    inlines = [ItemInline]
+
