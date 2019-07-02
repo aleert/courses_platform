@@ -43,23 +43,28 @@ class IsStudentOrOwnerOrSuperuser(BasePermission):
         )
 
 
-class IsStudentReadOnlyOrAdminOrSU(IsOwnerOrSuperuser):
-    """Permission to use read_only methods for students and write acess to owners and superusers."""
+class IsStudentOrTeacherReadOnlyOrAdminOrSU(IsOwnerOrSuperuser):
+    """Permission to use read_only methods for students and write access to owners and superusers."""
 
     def has_permission(self, request, view):
+        print('User ', request.user)
         obj = view.get_object()
-        student_exists = False
+        print('Object ', obj.__class__)
+        is_student = False
+        is_teacher = False
         if issubclass(obj.__class__, ContentBase):
-            student_exists = obj.item.module.course.students.filter(pk=request.user.pk).exists()
+            is_student = obj.item.module.course.students.filter(pk=request.user.pk).exists()
+            is_teacher = obj.item.module.course.teachers.filter(pk=request.user.pk).exists()
         elif isinstance(obj, Module):
-            student_exists = obj.course.students.filter(pk=request.user.pk).exists()
+            is_student = obj.course.students.filter(pk=request.user.pk).exists()
+            is_teacher = obj.course.teachers.filter(pk=request.user.pk).exists()
         elif isinstance(obj, Item):
-            student_exists = obj.module.course.students.filter(pk=request.user.pk).exists()
+            is_student = obj.module.course.students.filter(pk=request.user.pk).exists()
+            is_teacher = obj.module.course.teachers.filter(pk=request.user.pk).exists()
+
+        print('exists? ', is_student)
 
         if request.method in SAFE_METHODS:
-            return student_exists
+            return is_student or is_teacher
         else:
             return super().has_permission(request, view)
-
-
-        return False
