@@ -6,14 +6,15 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import (
     ListCreateAPIView, RetrieveUpdateDestroyAPIView, get_object_or_404,
-    RetrieveAPIView)
+)
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
 from common.permissions import (
     IsOwnerOrSuperuserOrReadOnly, IsAdminUserOrReadOnly, IsOwnerOrSuperuser,
-    IsStudentReadOnlyOrAdminOrSU)
+    IsStudentOrTeacherReadOnlyOrAdminOrSU
+)
 from . import models
 from . import serializers
 
@@ -91,7 +92,7 @@ class ModuleDetailView(RetrieveUpdateDestroyAPIView):
     # Doesn't have put support as it's ambigous what to do with module items
     # and hard to do multiple nested objects creation (items and contents within items)
     http_method_names = ['get', 'patch', 'delete', 'head', 'options', 'trace']
-    permission_classes = [IsStudentReadOnlyOrAdminOrSU]
+    permission_classes = [IsStudentOrTeacherReadOnlyOrAdminOrSU]
     serializer_class = serializers.ModuleSerializer
     queryset = models.Module.objects.all()
 
@@ -138,16 +139,8 @@ class ItemDetailView(RetrieveUpdateDestroyAPIView):
         return ctx
 
 
-class StudentItemDetailView(RetrieveAPIView):
-    """Read access to items for students of corresponding courses."""
-
-    permission_classes = [IsAuthenticated, IsStudentReadOnlyOrAdminOrSU]
-    serializer_class = serializers.ItemSerializer
-    queryset = models.Item.objects.all()
-
-
 class SubjectDetailView(RetrieveUpdateDestroyAPIView):
-    """View sibject and create new one if superuser."""
+    """View subject and create new one if superuser."""
 
     permission_classes = [IsAdminUserOrReadOnly]
     serializer_class = serializers.SubjectSerializer
@@ -164,7 +157,7 @@ class SubjectListView(ListCreateAPIView):
 
 class ContentDetailView(RetrieveUpdateDestroyAPIView):
     # TODO when content deleted return response is 404 which is probably due to get_object()
-    permission_classes = [IsOwnerOrSuperuserOrReadOnly]
+    permission_classes = [IsStudentOrTeacherReadOnlyOrAdminOrSU]
     serializer_class = serializers.ContentSerializer
     lookup_url_kwarg = 'pk'
 

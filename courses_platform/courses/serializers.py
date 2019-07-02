@@ -5,6 +5,7 @@ from django.db.models import ObjectDoesNotExist
 from rest_framework.exceptions import NotAcceptable, NotFound
 from rest_framework.reverse import reverse
 
+from common.serializers import ListSerializerWithoutNulls
 from . import models
 
 
@@ -193,10 +194,12 @@ class SubjectWithoutCoursesSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class CourseWithoutModulesSerializer(serializers.HyperlinkedModelSerializer):
+
     subject = SubjectWithoutCoursesSerializer(required=False)
 
     class Meta:
         model = models.Course
+        list_serializer_class = ListSerializerWithoutNulls
         fields = (
             'title',
             'overview',
@@ -225,6 +228,20 @@ class CourseWithoutModulesSerializer(serializers.HyperlinkedModelSerializer):
         except IntegrityError:
             raise NotAcceptable(detail='You already have course with such a title.')
         return instance
+
+    def to_representation(self, instance):
+        # if accessed from view check whether course should be displayed to user
+        # (to restrict courses in SubjectDetailView)
+        request = self.context.get('request')
+        if bool(
+            not request
+            or instance.visible
+            or request.user.is_staff
+            or request.user == instance.owner
+        ):
+            return super().to_representation(instance)
+        else:
+            return None
 
 
 class ModuleWithoutItemsSerializer(serializers.HyperlinkedModelSerializer):
