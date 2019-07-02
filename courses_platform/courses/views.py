@@ -1,16 +1,19 @@
 from django.contrib.auth import get_user_model
+from django.db.models import Q
+from django.http import JsonResponse
+from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import (
-    ListCreateAPIView, RetrieveUpdateDestroyAPIView, get_object_or_404
-)
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+    ListCreateAPIView, RetrieveUpdateDestroyAPIView, get_object_or_404,
+    RetrieveAPIView)
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
 from common.permissions import (
-    IsOwnerOrSuperuserOrReadOnly, IsAdminUserOrReadOnly, IsOwnerOrSuperuser
-)
+    IsOwnerOrSuperuserOrReadOnly, IsAdminUserOrReadOnly, IsOwnerOrSuperuser,
+    IsStudentReadOnlyOrAdminOrSU)
 from . import models
 from . import serializers
 
@@ -18,9 +21,19 @@ from . import serializers
 class CourseDetailView(RetrieveUpdateDestroyAPIView):
     """View and update course."""
 
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsOwnerOrSuperuserOrReadOnly]
     serializer_class = serializers.CourseSerializer
     queryset = models.Course.objects.all()
+
+    def filter_queryset(self, queryset):
+        user = self.request.user
+        if user.is_staff:
+            qs = queryset
+        elif user.is_authenticated:
+            qs = queryset.filter(Q(visible=True) | Q(owner=user.pk)).all()
+        else:
+            qs = queryset.filter(visible=True).all()
+        return qs
 
 
 class CourseListView(ListCreateAPIView):
@@ -32,6 +45,16 @@ class CourseListView(ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(owner_id=self.request.user.pk)
+
+    def filter_queryset(self, queryset):
+        user = self.request.user
+        if user.is_staff:
+            qs = queryset
+        elif user.is_authenticated:
+            qs = queryset.filter(Q(visible=True) | Q(owner=user.pk)).all()
+        else:
+            qs = queryset.filter(visible=True).all()
+        return qs
 
 
 class UserCourseListView(CourseListView):
@@ -51,7 +74,7 @@ class UserCourseListView(CourseListView):
 class CourseModulesView(ListCreateAPIView):
     """View all modules in course and create new ones."""
 
-    permission_classes = [IsOwnerOrSuperuserOrReadOnly]
+    permission_classes = [IsOwnerOrSuperuser]
     serializer_class = serializers.ModuleWithoutItemsSerializer
 
     def get_queryset(self):
@@ -68,7 +91,7 @@ class ModuleDetailView(RetrieveUpdateDestroyAPIView):
     # Doesn't have put support as it's ambigous what to do with module items
     # and hard to do multiple nested objects creation (items and contents within items)
     http_method_names = ['get', 'patch', 'delete', 'head', 'options', 'trace']
-    permission_classes = [IsOwnerOrSuperuserOrReadOnly]
+    permission_classes = [IsStudentReadOnlyOrAdminOrSU]
     serializer_class = serializers.ModuleSerializer
     queryset = models.Module.objects.all()
 
@@ -76,7 +99,7 @@ class ModuleDetailView(RetrieveUpdateDestroyAPIView):
 class ModuleItemsView(ListCreateAPIView):
     """View all items in module and create a new ones."""
 
-    permission_classes = [IsOwnerOrSuperuserOrReadOnly]
+    permission_classes = [IsOwnerOrSuperuser]
     serializer_class = serializers.ItemSerializer
 
     def get_queryset(self):
@@ -105,7 +128,7 @@ class ModuleItemsView(ListCreateAPIView):
 class ItemDetailView(RetrieveUpdateDestroyAPIView):
     """View single item and update it if owner."""
 
-    permission_classes = [IsOwnerOrSuperuserOrReadOnly]
+    permission_classes = [IsOwnerOrSuperuser]
     serializer_class = serializers.ItemSerializer
     queryset = models.Item.objects.all()
 
@@ -113,6 +136,14 @@ class ItemDetailView(RetrieveUpdateDestroyAPIView):
         ctx = super().get_serializer_context()
         ctx['item_pk'] = self.kwargs.get('pk')
         return ctx
+
+
+class StudentItemDetailView(RetrieveAPIView):
+    """Read access to items for students of corresponding courses."""
+
+    permission_classes = [IsAuthenticated, IsStudentReadOnlyOrAdminOrSU]
+    serializer_class = serializers.ItemSerializer
+    queryset = models.Item.objects.all()
 
 
 class SubjectDetailView(RetrieveUpdateDestroyAPIView):
@@ -151,5 +182,17 @@ def add_teacher(request, pk):
     user = get_object_or_404(User, pk=request.data['user_pk'])
     course = get_object_or_404(models.Course, pk=pk)
     course.teachers.add(user)
-    return Response(status=HTTP_200_OK, data={'result': 'Teacher added successfully'})
+    return Response(status=HTTP_200_OK, data={'detail': 'Teacher added successfully'})
 
+
+@api_view(http_method_names=['POST'])
+@permission_classes([IsAuthenticated])
+def enroll(request, pk):
+    course = get_object_or_404(models.Course, pk=pk)
+    if course.is_enroll_open:
+        course.students.add(request.user)
+        return JsonResponse(status=status.HTTP_200_OK, data={'detail': f'Successfully registered to {course.title}'})
+    return JsonResponse(
+        status=status.HTTP_400_BAD_REQUEST,
+        data={'error': f'Course {course.title} not open for enroll.'}
+    )

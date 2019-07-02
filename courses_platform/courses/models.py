@@ -50,7 +50,8 @@ class Course(models.Model):
     price = models.PositiveIntegerField(default=0, help_text='Price in USD')
     created = models.DateTimeField(auto_now_add=True)
     open_date = models.DateField()
-    is_enroll_open = models.BooleanField(default=False)
+    is_enroll_open = models.BooleanField(default=True)
+    visible = models.BooleanField(default=False)
 
     @cached_property
     def get_max_score(self):
