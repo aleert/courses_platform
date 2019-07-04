@@ -24,10 +24,13 @@ class IsOwnerOrSuperuser(BasePermission):
 
     def has_permission(self, request, view):
         obj = view.get_object()
-        return bool(
+        print('super ', request.user)
+        print('super ', request.user.is_staff)
+        print( bool(
             request.user
             and (request.user.is_staff or getattr(obj, 'owner', None) == request.user)
-        )
+        ))
+        return True
 
 
 class IsStudentOrOwnerOrSuperuser(BasePermission):
@@ -65,6 +68,7 @@ class IsStudentOrTeacherReadOnlyOrAdminOrSU(IsOwnerOrSuperuser):
         print('exists? ', is_student)
 
         if request.method in SAFE_METHODS:
-            return is_student or is_teacher
+            return is_student or is_teacher or request.user.is_staff
         else:
+            print('lets do super')
             return super().has_permission(request, view)
