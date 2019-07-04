@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Q
-from django.http import JsonResponse
-from rest_framework import status
+from django.db.models import Q, QuerySet
+from django.http import JsonResponse, Http404
+from django.apps import apps
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import (
@@ -9,7 +9,7 @@ from rest_framework.generics import (
 )
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK
+from rest_framework import status
 
 from common.permissions import (
     IsOwnerOrSuperuserOrReadOnly, IsAdminUserOrReadOnly, IsOwnerOrSuperuser,
@@ -22,7 +22,7 @@ from . import serializers
 class CourseDetailView(RetrieveUpdateDestroyAPIView):
     """View and update course."""
 
-    permission_classes = [IsOwnerOrSuperuserOrReadOnly]
+    permission_classes = (IsOwnerOrSuperuserOrReadOnly, )
     serializer_class = serializers.CourseSerializer
     queryset = models.Course.objects.all()
 
@@ -40,7 +40,7 @@ class CourseDetailView(RetrieveUpdateDestroyAPIView):
 class CourseListView(ListCreateAPIView):
     """View all courses and create new ones if authenticated user."""
 
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = (IsAuthenticatedOrReadOnly, )
     serializer_class = serializers.CourseWithoutModulesSerializer
     queryset = models.Course.objects.all()
 
@@ -75,7 +75,7 @@ class UserCourseListView(CourseListView):
 class CourseModulesView(ListCreateAPIView):
     """View all modules in course and create new ones."""
 
-    permission_classes = [IsOwnerOrSuperuser]
+    permission_classes = (IsOwnerOrSuperuser, )
     serializer_class = serializers.ModuleWithoutItemsSerializer
 
     def get_queryset(self):
@@ -92,7 +92,7 @@ class ModuleDetailView(RetrieveUpdateDestroyAPIView):
     # Doesn't have put support as it's ambigous what to do with module items
     # and hard to do multiple nested objects creation (items and contents within items)
     http_method_names = ['get', 'patch', 'delete', 'head', 'options', 'trace']
-    permission_classes = [IsStudentOrTeacherReadOnlyOrAdminOrSU]
+    permission_classes = (IsStudentOrTeacherReadOnlyOrAdminOrSU, )
     serializer_class = serializers.ModuleSerializer
     queryset = models.Module.objects.all()
 
@@ -100,7 +100,7 @@ class ModuleDetailView(RetrieveUpdateDestroyAPIView):
 class ModuleItemsView(ListCreateAPIView):
     """View all items in module and create a new ones."""
 
-    permission_classes = [IsOwnerOrSuperuser]
+    permission_classes = (IsOwnerOrSuperuser, )
     serializer_class = serializers.ItemSerializer
 
     def get_queryset(self):
@@ -129,7 +129,7 @@ class ModuleItemsView(ListCreateAPIView):
 class ItemDetailView(RetrieveUpdateDestroyAPIView):
     """View single item and update it if owner."""
 
-    permission_classes = [IsOwnerOrSuperuser]
+    permission_classes = (IsOwnerOrSuperuser, )
     serializer_class = serializers.ItemSerializer
     queryset = models.Item.objects.all()
 
@@ -142,7 +142,7 @@ class ItemDetailView(RetrieveUpdateDestroyAPIView):
 class SubjectDetailView(RetrieveUpdateDestroyAPIView):
     """View subject and create new one if superuser."""
 
-    permission_classes = [IsAdminUserOrReadOnly]
+    permission_classes = (IsAdminUserOrReadOnly, )
     serializer_class = serializers.SubjectSerializer
     queryset = models.Subject.objects.all()
 
@@ -150,41 +150,49 @@ class SubjectDetailView(RetrieveUpdateDestroyAPIView):
 class SubjectListView(ListCreateAPIView):
     """View sibject and create new one if superuser."""
 
-    permission_classes = [IsAdminUserOrReadOnly]
+    permission_classes = (IsAdminUserOrReadOnly, )
     serializer_class = serializers.SubjectWithoutCoursesSerializer
     queryset = models.Subject.objects.all()
 
 
 class ContentDetailView(RetrieveUpdateDestroyAPIView):
     # TODO when content deleted return response is 404 which is probably due to get_object()
-    permission_classes = [IsStudentOrTeacherReadOnlyOrAdminOrSU]
+    permission_classes = (IsStudentOrTeacherReadOnlyOrAdminOrSU, )
     serializer_class = serializers.ContentSerializer
     lookup_url_kwarg = 'pk'
 
     def get_queryset(self):
         content_type = self.kwargs.get('content_type')
-        serializer = serializers.get_content_serializer_class(content_type)
-        klass = serializer.Meta.model
+        try:
+            klass = apps.get_model('courses', content_type)
+        except LookupError:
+            raise Http404(f'No such content-type {content_type}')
         return klass.objects.all()
 
 
 @api_view(http_method_names=['POST'])
-@permission_classes([IsOwnerOrSuperuser])
+@permission_classes((IsOwnerOrSuperuser, ))
 def add_teacher(request, pk):
     User = get_user_model()
     user = get_object_or_404(User, pk=request.data['user_pk'])
     course = get_object_or_404(models.Course, pk=pk)
     course.teachers.add(user)
-    return Response(status=HTTP_200_OK, data={'detail': 'Teacher added successfully'})
+    return Response(
+        status=status.HTTP_200_OK,
+        data={'detail': 'Teacher added successfully'}
+    )
 
 
 @api_view(http_method_names=['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes((IsAuthenticated, ))
 def enroll(request, pk):
     course = get_object_or_404(models.Course, pk=pk)
     if course.is_enroll_open:
         course.students.add(request.user)
-        return JsonResponse(status=status.HTTP_200_OK, data={'detail': f'Successfully registered to {course.title}'})
+        return JsonResponse(
+            status=status.HTTP_200_OK,
+            data={'detail': f'Successfully registered to {course.title}'}
+        )
     return JsonResponse(
         status=status.HTTP_400_BAD_REQUEST,
         data={'error': f'Course {course.title} not open for enroll.'}

@@ -28,19 +28,19 @@ class Course(models.Model):
         on_delete=models.CASCADE,
     )
     subject = models.ForeignKey(
-        Subject,
+        to=Subject,
         related_name='courses',
         blank=True,
         null=True,
         on_delete=models.CASCADE,
     )
     students = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
+        to=settings.AUTH_USER_MODEL,
         related_name='courses_joined',
         blank=True,
     )
     teachers = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
+        to=settings.AUTH_USER_MODEL,
         related_name='courses_teaches',
         blank=True,
     )
@@ -53,16 +53,16 @@ class Course(models.Model):
     is_enroll_open = models.BooleanField(default=True)
     visible = models.BooleanField(default=False)
 
-    @cached_property
-    def get_max_score(self):
-        return sum([module.get_max_score() for module in self.modules.all()])
-
     class Meta:
-        ordering = ['-created']
-        unique_together = ['owner', 'title']
+        ordering = ('-created', )
+        unique_together = ('owner', 'title', )
 
     def __str__(self):
         return self.title
+
+    @cached_property
+    def get_max_score(self):
+        return sum([module.get_max_score() for module in self.modules.all()])
 
 
 class Module(models.Model):
@@ -77,7 +77,7 @@ class Module(models.Model):
     order = OrderField(blank=True, for_fields=['course'])
 
     class Meta:
-        ordering = ['order']
+        ordering = ('order', )
 
     def __str__(self):
         return "{0}. {1}".format(self.order, self.title)
@@ -114,6 +114,9 @@ class Item(models.Model):
     )
     order = OrderField(for_fields=['module'], blank=True)
 
+    def str(self):
+        return f'Item {self.order} of module {self.module.id}'
+
     def all_contents(self):
         contents = []
         for content_type in Item.CONTENTS_RELATED:
@@ -133,7 +136,7 @@ class ContentBase(models.Model):
         related_name='%(class)s_related',
         on_delete=models.CASCADE,
     )
-    # sets to lowercase model name at save
+    # sets to lowercase model name at save()
     content_type = models.CharField(max_length=20, blank=True, editable=False)
     title = models.CharField(max_length=250, blank=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -145,20 +148,20 @@ class ContentBase(models.Model):
         related_name='%(class)s_related'
     )
 
+    class Meta:
+        abstract = True
+        indexes = [
+            models.Index(fields=('content_type', 'id', )),
+        ]
+
+    def __str__(self):
+        return f'Content {self.title}'
+
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
         self.content_type = self._meta.model_name
         return super().save(force_insert=force_insert, force_update=force_update, using=using,
                             update_fields=update_fields)
-
-    class Meta:
-        abstract = True
-        indexes = [
-            models.Index(fields=['content_type', 'id']),
-                   ]
-
-    def __str__(self):
-        return self.title
 
 
 class Text(ContentBase):
@@ -194,13 +197,14 @@ class Video(ContentBase):
 
 
 class BaseAssignment(ContentBase):
+
     owner = models.ForeignKey(
         to=settings.AUTH_USER_MODEL,
         related_name='%(class)s_related',
         on_delete=models.CASCADE
     )
     item = models.ForeignKey(
-        to='Item',
+        to=Item,
         related_name='%(class)s_related',
         on_delete=models.CASCADE
     )
@@ -224,7 +228,7 @@ class BaseAssignment(ContentBase):
 
 class StringAssignment(BaseAssignment):
     """Compare string with expected one and give max_score if correct."""
-    CONTENT_TYPE = 'stringassignment'
+
     answer = models.CharField(max_length=200)
     question = models.TextField()
 
@@ -236,7 +240,7 @@ class StringAssignment(BaseAssignment):
 
 class ChoicesAssignment(BaseAssignment):
     """Select one answer from a list."""
-    CONTENT_TYPE = 'choicesassignment'
+
     # must be split with ',_' escape sequence
     _choices = models.TextField()
     answer = models.CharField(max_length=80)
@@ -252,7 +256,7 @@ class ChoicesAssignment(BaseAssignment):
 
 
 class MultipleChoicesAssignment(BaseAssignment):
-    CONTENT_TYPE = 'multiplechoicesassignment'
+
     # must be split with ',_' escape sequence
     _choices = models.TextField()
     _correct_choices = models.TextField()

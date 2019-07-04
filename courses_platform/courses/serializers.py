@@ -89,7 +89,7 @@ class ChoicesAssignmentSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        request = self.context.get('request', None)
+        request = self.context.get('request')
         if not (request and (request.user.pk == instance.owner_id or request.user.is_staff)):
             ret['answer'] = None
         return ret
@@ -114,7 +114,7 @@ class MultipleChoicesAssignmentSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        request = self.context.get('request', None)
+        request = self.context.get('request')
         if not (request and (request.user.pk == instance.owner_id or request.user.is_staff)):
             ret['_correct_choices'] = []
         return ret
@@ -180,7 +180,7 @@ class SubjectWithoutCoursesSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = models.Subject
-        fields = ('title', 'url')
+        fields = ('title', 'url', )
         extra_kwargs = {
             'url': {
                 'view_name': 'courses:subject_detail'
@@ -317,7 +317,7 @@ class ItemSerializer(serializers.ModelSerializer):
         )
 
     def update(self, instance, validated_data):
-        request = self.context.get('request', None)
+        request = self.context.get('request')
         contents = validated_data.pop('all_contents')
         instance = super().update(instance, validated_data=validated_data)
         if request.method == 'PUT':
@@ -394,5 +394,5 @@ class ModuleSerializer(serializers.ModelSerializer):
         return reverse(
             'courses:module_items',
             args=[obj.pk],
-            request=self.context.get('request', None)
+            request=self.context.get('request')
         )
