@@ -148,7 +148,7 @@ class SubjectDetailView(RetrieveUpdateDestroyAPIView):
 
 
 class SubjectListView(ListCreateAPIView):
-    """View sibject and create new one if superuser."""
+    """View subject and create new one if superuser."""
 
     permission_classes = (IsAdminUserOrReadOnly, )
     serializer_class = serializers.SubjectWithoutCoursesSerializer
