@@ -35,4 +35,3 @@ class ProfileEditFrom(forms.ModelForm):
     class Meta:
         model = Profile
         fields = ('about_myself', 'date_of_birth', 'photo')
-

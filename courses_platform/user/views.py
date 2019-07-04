@@ -2,7 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 
-from .forms import UserRegistrationForm, UserEditForm, ProfileEditFrom
+from .forms import ProfileEditFrom, UserEditForm, UserRegistrationForm
 from .models import Profile
 
 
@@ -45,4 +45,3 @@ def edit(request):
                   'user/edit.html',
                   {'user_form': user_form,
                    'profile_form': profile_form})
-

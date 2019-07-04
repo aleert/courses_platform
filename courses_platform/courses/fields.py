@@ -1,5 +1,5 @@
-from django.db import models
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import models
 
 
 class OrderField(models.PositiveIntegerField):
@@ -46,4 +46,3 @@ class OrderField(models.PositiveIntegerField):
         else:
             # if we provided value set it as if it's PositiveIntegerField
             return super(OrderField, self).pre_save(model_instance, add)
-

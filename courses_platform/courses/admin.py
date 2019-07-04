@@ -1,7 +1,7 @@
 from django.contrib import admin
 
-from .models import Course, Subject, Module, Image, Text, File, Video, StringAssignment, ChoicesAssignment, \
-    MultipleChoicesAssignment, Item
+from .models import (ChoicesAssignment, Course, File, Image, Item, Module,
+                     MultipleChoicesAssignment, StringAssignment, Subject, Text, Video)
 
 
 @admin.register(Subject)
@@ -71,4 +71,3 @@ class ItemInline(admin.StackedInline):
 @admin.register(Module)
 class ModuleAdmin(admin.ModelAdmin):
     inlines = [ItemInline]
-

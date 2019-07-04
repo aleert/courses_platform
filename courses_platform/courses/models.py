@@ -276,4 +276,3 @@ class MultipleChoicesAssignment(BaseAssignment):
             return 0
         # if there are at least one correct answer min score is 1
         return round(correct_answers*self.max_score/num_correct_choices) or 1
-

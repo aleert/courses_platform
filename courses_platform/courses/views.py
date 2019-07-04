@@ -1,22 +1,19 @@
-from django.contrib.auth import get_user_model
-from django.db.models import Q, QuerySet
-from django.http import JsonResponse, Http404
 from django.apps import apps
+from django.contrib.auth import get_user_model
+from django.db.models import Q
+from django.http import Http404, JsonResponse
+
+from common.permissions import (IsAdminUserOrReadOnly, IsOwnerOrSuperuser,
+                                IsOwnerOrSuperuserOrReadOnly, IsStudentOrTeacherReadOnlyOrAdminOrSU)
+from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import NotFound
-from rest_framework.generics import (
-    ListCreateAPIView, RetrieveUpdateDestroyAPIView, get_object_or_404,
-)
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from rest_framework.generics import (ListCreateAPIView, RetrieveUpdateDestroyAPIView,
+                                     get_object_or_404)
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
-from rest_framework import status
 
-from common.permissions import (
-    IsOwnerOrSuperuserOrReadOnly, IsAdminUserOrReadOnly, IsOwnerOrSuperuser,
-    IsStudentOrTeacherReadOnlyOrAdminOrSU
-)
-from . import models
-from . import serializers
+from . import models, serializers
 
 
 class CourseDetailView(RetrieveUpdateDestroyAPIView):

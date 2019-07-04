@@ -136,4 +136,3 @@ REST_REGISTRATION = {
     'RESET_PASSWORD_VERIFICATION_URL': reverse_lazy('rest_registration:reset-password'),
 
 }
-

@@ -1,13 +1,13 @@
 from django.db import IntegrityError
-from django.utils.text import slugify
-from rest_framework import serializers
 from django.db.models import ObjectDoesNotExist
+from django.utils.text import slugify
+
+from common.serializers import ListSerializerWithoutNulls
+from rest_framework import serializers
 from rest_framework.exceptions import NotAcceptable, NotFound
 from rest_framework.reverse import reverse
 
-from common.serializers import ListSerializerWithoutNulls
 from . import models
-
 
 #####################
 # Content serializers

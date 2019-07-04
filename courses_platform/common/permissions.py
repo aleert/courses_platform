@@ -1,6 +1,5 @@
-from rest_framework.permissions import BasePermission, SAFE_METHODS
-
-from courses.models import Module, Item, ContentBase
+from courses.models import ContentBase, Item, Module
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 
 class IsOwnerOrSuperuserOrReadOnly(BasePermission):
@@ -24,13 +23,10 @@ class IsOwnerOrSuperuser(BasePermission):
 
     def has_permission(self, request, view):
         obj = view.get_object()
-        print('super ', request.user)
-        print('super ', request.user.is_staff)
-        print( bool(
+        return bool(
             request.user
             and (request.user.is_staff or getattr(obj, 'owner', None) == request.user)
-        ))
-        return True
+        )
 
 
 class IsStudentOrOwnerOrSuperuser(BasePermission):
@@ -50,9 +46,7 @@ class IsStudentOrTeacherReadOnlyOrAdminOrSU(IsOwnerOrSuperuser):
     """Permission to use read_only methods for students and write access to owners and superusers."""
 
     def has_permission(self, request, view):
-        print('User ', request.user)
         obj = view.get_object()
-        print('Object ', obj.__class__)
         is_student = False
         is_teacher = False
         if issubclass(obj.__class__, ContentBase):
@@ -65,10 +59,7 @@ class IsStudentOrTeacherReadOnlyOrAdminOrSU(IsOwnerOrSuperuser):
             is_student = obj.module.course.students.filter(pk=request.user.pk).exists()
             is_teacher = obj.module.course.teachers.filter(pk=request.user.pk).exists()
 
-        print('exists? ', is_student)
-
         if request.method in SAFE_METHODS:
             return is_student or is_teacher or request.user.is_staff
         else:
-            print('lets do super')
             return super().has_permission(request, view)
