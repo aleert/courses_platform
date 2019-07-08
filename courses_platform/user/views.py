@@ -1,47 +1,31 @@
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from django.contrib.auth import get_user_model, login
+from django.shortcuts import redirect
+from rest_framework.reverse import reverse_lazy, reverse
+from django.test import RequestFactory
+from rest_registration.api.views.register import verify_registration as rest_verify_registration
 
-from .forms import ProfileEditFrom, UserEditForm, UserRegistrationForm
-from .models import Profile
 
+def verify_registration(request):
+    user_id = request.GET.get('user_id')
+    timestamp = request.GET.get('timestamp')
+    signature = request.GET.get('signature')
+    backend_url = reverse('rest_registration:verify-registration')
+    data = {
+        'user_id': user_id,
+        'timestamp': timestamp,
+        'signature': signature
+    }
+    # make direct call to view instead of making actual POST request
+    factory = RequestFactory()
+    request_to_backend = factory.post(path=backend_url, data=data)
+    response = rest_verify_registration(request_to_backend)
 
-def register(request):
-    if request.method == 'POST':
-        user_form = UserRegistrationForm(request.POST)
-        if user_form.is_valid():
-            new_user = user_form.save(commit=False)
-            new_user.set_password(user_form.cleaned_data['password'])
-            new_user.save()
-            Profile.objects.create(user=new_user)
-            return render(request,
-                          'user/register_done.html',
-                          {'new_user': new_user})
+    if response.status_code == 200:
+        # log-in user
+        user_model = get_user_model()
+        user = user_model.objects.get(pk=user_id)
+        login(request, user)
+        return redirect(reverse_lazy('courses:user_courses', args=[user_id, ]))
     else:
-        user_form = UserRegistrationForm()
-    return render(request,
-                  'user/register.html',
-                  {'user_form': user_form})
-
-
-@login_required
-def edit(request):
-    if request.method == 'POST':
-        user_form = UserEditForm(instance=request.user,
-                                 data=request.POST)
-        profile_form = ProfileEditFrom(instance=request.user.profile,
-                                       data=request.POST,
-                                       files=request.FILES)
-        if user_form.is_valid() and profile_form.is_valid():
-            user_form.save()
-            profile_form.save()
-            messages.success(request, "Profile updated successfully.")
-        else:
-            messages.error(request, 'Error updating your profile.')
-    else:
-        user_form = UserEditForm(instance=request.user)
-        profile_form = ProfileEditFrom(instance=request.user.profile)
-    return render(request,
-                  'user/edit.html',
-                  {'user_form': user_form,
-                   'profile_form': profile_form})
+        # response 400
+        return response

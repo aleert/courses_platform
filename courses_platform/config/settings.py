@@ -128,11 +128,15 @@ STATIC_URL = '/static/'
 
 AUTH_USER_MODEL = 'user.MyUser'
 
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
 # email verification disabled for testing
 REST_REGISTRATION = {
-    'REGISTER_VERIFICATION_ENABLED': False,
-    'REGISTER_EMAIL_VERIFICATION_ENABLED': False,
+    'REGISTER_VERIFICATION_ENABLED': True,
+    'REGISTER_VERIFICATION_URL': reverse_lazy('user:verify_registration'),
+    'REGISTER_EMAIL_VERIFICATION_ENABLED': True,
+    'REGISTER_EMAIL_VERIFICATION_URL': reverse_lazy('rest_registration:verify-email'),
     'VERIFICATION_FROM_EMAIL': 'test_registration@example.com',
     'RESET_PASSWORD_VERIFICATION_URL': reverse_lazy('rest_registration:reset-password'),
-
 }
+
