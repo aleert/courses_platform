@@ -1,71 +1,72 @@
 [[package]]
-category = "main"
-description = "A high-level Python Web framework that encourages rapid development and clean, pragmatic design."
 name = "django"
+version = "2.2.18"
+description = "A high-level Python Web framework that encourages rapid development and clean, pragmatic design."
+category = "main"
 optional = false
 python-versions = ">=3.5"
-version = "2.2.13"
 
 [package.dependencies]
 pytz = "*"
-sqlparse = "*"
+sqlparse = ">=0.2.2"
 
 [package.extras]
 argon2 = ["argon2-cffi (>=16.1.0)"]
 bcrypt = ["bcrypt"]
 
 [[package]]
-category = "main"
-description = "User registration REST API, based on django-rest-framework"
 name = "django-rest-registration"
+version = "0.5.0"
+description = "User registration REST API, based on django-rest-framework"
+category = "main"
 optional = false
 python-versions = ">=3.4"
-version = "0.5.0"
 
 [package.dependencies]
 Django = ">=1.10"
 djangorestframework = ">=3.3"
 
 [[package]]
-category = "main"
-description = "Web APIs for Django, made easy."
 name = "djangorestframework"
+version = "3.9.4"
+description = "Web APIs for Django, made easy."
+category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "3.9.4"
 
 [[package]]
-category = "main"
-description = "psycopg2 - Python-PostgreSQL Database Adapter"
 name = "psycopg2-binary"
+version = "2.8.3"
+description = "psycopg2 - Python-PostgreSQL Database Adapter"
+category = "main"
 optional = false
 python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*"
-version = "2.8.3"
 
 [[package]]
-category = "main"
-description = "World timezone definitions, modern and historical"
 name = "pytz"
+version = "2019.1"
+description = "World timezone definitions, modern and historical"
+category = "main"
 optional = false
 python-versions = "*"
-version = "2019.1"
 
 [[package]]
-category = "main"
-description = "Non-validating SQL parser"
 name = "sqlparse"
+version = "0.3.0"
+description = "Non-validating SQL parser"
+category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "0.3.0"
 
 [metadata]
-content-hash = "db4a8b89e66f20ce3e59e82870841eedf9622890192039eca8b3fcb5f8c411d2"
+lock-version = "1.1"
 python-versions = "^3.6"
+content-hash = "db4a8b89e66f20ce3e59e82870841eedf9622890192039eca8b3fcb5f8c411d2"
 
 [metadata.files]
 django = [
-    {file = "Django-2.2.13-py3-none-any.whl", hash = "sha256:e8fe3c2b2212dce6126becab7a693157f1a441a07b62ec994c046c76af5bb66d"},
-    {file = "Django-2.2.13.tar.gz", hash = "sha256:84f370f6acedbe1f3c41e1a02de44ac206efda3355e427139ecb785b5f596d80"},
+    {file = "Django-2.2.18-py3-none-any.whl", hash = "sha256:0eaca08f236bf502a9773e53623f766cc3ceee6453cc41e6de1c8b80f07d2364"},
+    {file = "Django-2.2.18.tar.gz", hash = "sha256:c9c994f5e0a032cbd45089798b52e4080f4dea7241c58e3e0636c54146480bb4"},
 ]
 django-rest-registration = [
     {file = "django-rest-registration-0.5.0.tar.gz", hash = "sha256:893427b6a8507d278fd034b54865ab0ab56ee4ae839d961df092b2155c43e32b"},
